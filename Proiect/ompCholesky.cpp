@@ -59,10 +59,10 @@ void verifyCholesky(double *mat, double *a, int n) {
         }
     }
 
-    show_matrix(rez, n);
-    printf("\n");
-    show_matrix(mat, n);
-    printf("\n");
+    //show_matrix(rez, n);
+    //printf("\n");
+    //show_matrix(mat, n);
+    //printf("\n");
 
 
     for(i = 0; i < n; i++) {
@@ -81,10 +81,10 @@ void verifyCholesky(double *mat, double *a, int n) {
 
 int main() {
     int n, i, j;
-    FILE *f = fopen("testFile3.txt", "r");
+    FILE *f = fopen("testFile5.txt", "r");
 
     fscanf(f, "%d", &n);
-    
+
     printf("%d\n", n);
 
     double mat[n * n];

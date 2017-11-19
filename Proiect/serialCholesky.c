@@ -37,22 +37,71 @@ void show_matrix(double *A, int n) {
     }
 }
 
-int main() {
-    int n = 3;
-    double m1[] = {25, 15, -5,
-                   15, 18,  0,
-                   -5,  0, 11};
-    cholesky(m1, n);
-    show_matrix(m1, n);
-    printf("\n");
+void verifyCholesky(double *mat, double *a, int n) {
+    int i, j, k;
+    double rez[n * n], sum;
 
-    n = 4;
-    double m2[] = {18, 22,  54,  42,
-                   22, 70,  86,  62,
-                   54, 86, 174, 134,
-                   42, 62, 134, 106};
-    cholesky(m2, n);
-    show_matrix(m2, n);
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) {
+            sum = 0;
+            for(k = 0; k < n; k++) {
+                sum += a[i * n + k] * a[j * n + k];
+            }
+            rez[i*n+j] = sum;
+        }
+    }
+
+    //show_matrix(rez, n);
+    //printf("\n");
+    //show_matrix(mat, n);
+    //printf("\n");
+
+
+    for(i = 0; i < n; i++) {
+        for(j = 0; j < n; j++) {
+            if(round(mat[i*n+j]) != round(rez[i*n+j])) {
+                printf("%d %d\n", i, j);
+                printf("%lf -- %lf\n", mat[i*n+j], rez[i*n+j]);
+                printf("sugi o ceapa\n");
+                return;
+            }
+        }
+    }
+
+    printf("sugi un cartof\n");
+}
+
+int main() {
+    int n, i, j;
+    FILE *f = fopen("testFile5.txt", "r");
+
+    fscanf(f, "%d", &n);
+
+    printf("%d\n", n);
+
+    double mat[n * n];
+
+    for(i = 0; i < n; i++) {
+        for(j = 0; j < n; j++) {
+            fscanf(f, "%lf", &mat[i * n + j]);
+        }
+    }
+
+    double matOriginal[n * n];
+
+    for(i = 0; i < n; i++) {
+        for(j = 0; j < n; j++) {
+            matOriginal[i * n + j] = mat[i * n + j];
+        }
+    }
+
+    cholesky(mat, n);
+    //show_matrix(m1, n);
+    //printf("\n");
+
+    verifyCholesky(matOriginal, mat, n);
+
+    fclose(f);
 
     return 0;
 }
