@@ -51,12 +51,6 @@ void verifyCholesky(double *mat, double *a, int n) {
         }
     }
 
-    //show_matrix(rez, n);
-    //printf("\n");
-    //show_matrix(mat, n);
-    //printf("\n");
-
-
     for(i = 0; i < n; i++) {
         for(j = 0; j < n; j++) {
             if(round(mat[i*n+j]) != round(rez[i*n+j])) {
@@ -67,27 +61,25 @@ void verifyCholesky(double *mat, double *a, int n) {
             }
         }
     }
-
     printf("sugi un cartof\n");
 }
 
 int main() {
     int n, i, j;
-    FILE *f = fopen("testFile5.txt", "r");
+    FILE *f = fopen("testFile7.txt", "r");
 
     fscanf(f, "%d", &n);
 
     printf("%d\n", n);
 
-    double mat[n * n];
+    double *mat = calloc(n*n, sizeof(double));
+    double *matOriginal = calloc(n*n, sizeof(double));
 
     for(i = 0; i < n; i++) {
         for(j = 0; j < n; j++) {
             fscanf(f, "%lf", &mat[i * n + j]);
         }
     }
-
-    double matOriginal[n * n];
 
     for(i = 0; i < n; i++) {
         for(j = 0; j < n; j++) {
@@ -96,12 +88,12 @@ int main() {
     }
 
     cholesky(mat, n);
-    //show_matrix(m1, n);
-    //printf("\n");
 
     verifyCholesky(matOriginal, mat, n);
 
     fclose(f);
+    free(mat);
+    free(matOriginal);
 
     return 0;
 }
