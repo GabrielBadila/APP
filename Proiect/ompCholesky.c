@@ -12,13 +12,13 @@ void cholesky(double *a, int n) {
     for(k = 0; k < n; k++) {
         a[k * n + k] = sqrt(a[k * n + k]);
 
-        #pragma omp parallel for private(i)
+        #pragma omp parallel for //private(i)
         for(i = k + 1; i < n; i++) {
             //printf("%d\n", omp_get_num_threads());
             a[i * n + k] = a[i * n + k] / a[k * n + k];
         }
 
-        #pragma omp parallel for collapse(2)
+        #pragma omp parallel for private (j, i)//collapse(2)
         for(j = k + 1; j < n; j++) {
             for(i = 0; i < n; i++) {
                 if (i >= j) {
@@ -75,13 +75,23 @@ void verifyCholesky(double *mat, double *a, int n) {
 }
 
 int main() {
-    int n, i, j;
+    int n, i, j, tid;
     FILE *f = fopen("testFile7.txt", "r");
 
     fscanf(f, "%d", &n);
 
     printf("%d\n", n);
 
+    //omp_set_num_threads(4);
+/*
+    #pragma omp parallel
+	{
+		tid = omp_get_thread_num();
+		if (tid == 0) {
+			printf("Number of threads: %d\n", omp_get_num_threads());
+		}
+	}
+*/
     double *mat = calloc(n*n, sizeof(double));
     double *matOriginal = calloc(n*n, sizeof(double));
 
