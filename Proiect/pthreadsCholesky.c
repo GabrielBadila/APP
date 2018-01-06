@@ -14,92 +14,42 @@ struct arg_struct {
     int rank;
 };
 
-void show_matrix(double *A, int n) {
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++)
-            printf("%2.5f ", A[i * n + j]);
-        printf("\n");
-    }
-}
-
-
 void cholesky(int rank) {
-
-    printf("Cholesky\n");
 	double start, end;
 	int i, j, k;
-	double *copy = calloc(n, sizeof(double));
-
-
+	double *copy = (double*) malloc(n * sizeof(double));
 
 	for(j = 0; j < n; j++) {
-
-		/*
-		 * Step 0:
-		 * Replace the entries above the diagonal with zeroes
-		 */
+        /* Replace the entries above the diagonal with zeroes */
 		if (rank == 0) {
 			for (i = 0; i < j; i++) {
-                //L[i][j] = 0.0;
 				mat[i * n + j] = 0;
 			}
 		}
 
-		/*
-		 * Step 1:
-		 * Update the diagonal element
-		 */
-
+        /* Update the diagonal element */
 		if (j % NUMTHREADS == rank) {
-
 			for (k = 0; k < j; k++) {
-				//L[j][j] = L[j][j] - L[j][k] * L[j][k];
                 mat[j * n + j] = mat[j * n + j] - mat[j * n + k] * mat[j * n + k];
 			}
 
-			//L[j][j] = sqrt(L[j][j]);
             mat[j * n + j] = sqrt(mat[j * n + j]);
 		}
 
+        /* Wait for all threads to update the diagonal */
         pthread_barrier_wait(&mybarrier);
 
-		/*
-		 * Step 2:
-		 * Update the elements below the diagonal element
-		 */
-
-		// Divide the rest of the work
+		/* Divide the rest of the work and update the elements below the diagonal */
 		for (i = j + 1; i < n; i++) {
 			if (i % NUMTHREADS == rank) {
 				for (k = 0; k < j; k++) {
-					//L[i][j] = L[i][j] - L[i][k] * L[j][k];
                     mat[i * n + j] = mat[i * n + j] - mat[i * n + k] * mat[j * n + k];
 				}
 
-				//L[i][j] = L[i][j] / L[j][j];
                 mat[i * n + k] = mat[i * n + k] / mat[j * n + j];
 			}
 		}
 	}
-
-    /*
-	if (rank == 0){
-		end = MPI_Wtime();
-		printf("Testing OpenMpi implementation Output: \n");
-		printf("Runtime = %lf\n", end-start);
-		printf("Testing MPI implementation Output: ");
-		testBasicOutput(A,L,n);
-        // Test
-        /*double ** LLT = matrixMultiply(L, transpose(L, n), n);
-        printf("L*L^T = \n");
-        print(LLT, n);
-
-	}
-    */
-
-    //printf("matIN\n");
-    //show_matrix(mat, n);
-
 }
 
 void *choleskyThread(void *arguments) {
@@ -107,8 +57,15 @@ void *choleskyThread(void *arguments) {
     cholesky(args->rank);
 }
 
-void verifyCholesky(double *mat, double *a, int n) {
-    printf("am intrat\n");
+void show_matrix(double *mat, int n) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++)
+            printf("%2.5f ", mat[i * n + j]);
+        printf("\n");
+    }
+}
+
+void verifyCholesky(double *mat, double *L, int n) {
     int i, j, k;
     double rez[n * n], sum;
 
@@ -116,7 +73,7 @@ void verifyCholesky(double *mat, double *a, int n) {
         for (j = 0; j < n; j++) {
             sum = 0;
             for(k = 0; k < n; k++) {
-                sum += a[i * n + k] * a[j * n + k];
+                sum += L[i * n + k] * L[j * n + k];
             }
             rez[i*n+j] = sum;
         }
@@ -125,18 +82,14 @@ void verifyCholesky(double *mat, double *a, int n) {
     for(i = 0; i < n; i++) {
         for(j = 0; j < n; j++) {
             if(round(mat[i*n+j]) != round(rez[i*n+j])) {
-                printf("%d %d\n", i, j);
-                printf("%lf -- %lf\n", mat[i*n+j], rez[i*n+j]);
-                printf("sugi o ceapa\n");
+                printf("Wrong matrix!\n");
+                printf("Position: (%d, %d)\n", i, j);
                 return;
             }
         }
     }
-
-    printf("sugi un cartof\n");
+    printf("Correct matrix!\n");
 }
-
-
 
 int main(int argc, char *argv[]) {
     int i, j, iret;
@@ -145,20 +98,24 @@ int main(int argc, char *argv[]) {
     pthread_t thread[NUMTHREADS];
     struct arg_struct args_s[NUMTHREADS];
 
-    f = fopen("testFile4.txt", "r");
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <in_file>\n", argv[0]);
+        exit(1);
+    }
+
+    f = fopen(argv[1], "r");
     fscanf(f, "%d", &n);
-    printf("%d\n", n);
+    printf("Size: %dx%d\n", n, n);
 
 
-    mat = calloc(n*n, sizeof(double));
-    matOriginal = calloc(n*n, sizeof(double));
+    mat = (double*) malloc(n * n * sizeof(double));
+    matOriginal = (double*) malloc(n * n * sizeof(double));
 
     for(i = 0; i < n; i++) {
         for(j = 0; j < n; j++) {
             fscanf(f, "%lf", &mat[i * n + j]);
         }
     }
-    printf("barabula\n");
     fclose(f);
 
     for(i = 0; i < n; i++) {
@@ -166,18 +123,6 @@ int main(int argc, char *argv[]) {
             matOriginal[i * n + j] = mat[i * n + j];
         }
     }
-
-
-
-	// for(i = 0; i < n; i++) {
-	// 	for(j = 0; j < n; j++) {
-	// 		printf("%lf ", mat[i * n + j]);
-	// 	}
-	// 	printf("\n");
-	// }
-
-    //show_matrix(mat, n);
-    //show_matrix(matOriginal, n);
 
     for (i = 0; i < NUMTHREADS; ++i) {
         args_s[i].rank = i;
@@ -200,27 +145,10 @@ int main(int argc, char *argv[]) {
     }
 
     pthread_barrier_destroy(&mybarrier);
-
-    //show_matrix(mat, n);
-    //show_matrix(matOriginal, n);
-
-    //cholesky(mat, n, rank, nProcesses);
-
-    // for(i = 0; i < n; i++) {
-	// 	for(j = 0; j < n; j++) {
-	// 		printf("%lf ", mat[i * n + j]);
-	// 	}
-	// 	printf("\n");
-	// }
-
-	printf("dupa cholesky\n");
-
     verifyCholesky(matOriginal, mat, n);
-
 
     free(mat);
     free(matOriginal);
-
 
     return 0;
 }

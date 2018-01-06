@@ -4,93 +4,60 @@
 #include <mpi.h>
 
 void cholesky(double *a, int n, int rank, int nProcesses) {
-    printf("Cholesky\n");
 	double start, end;
 	int i, j, k;
-	double *copy = calloc(n, sizeof(double));
+	double *copy = (double*) malloc(n * sizeof(double));
 
-	for(j = 0; j < n; j++) {
-
-		/*
-		 * Step 0:
-		 * Replace the entries above the diagonal with zeroes
-		 */
-		if (rank == 0) {
+    for(j = 0; j < n; j++) {
+        /* Replace the entries above the diagonal with zeroes */
+        if (rank == 0) {
 			for (i = 0; i < j; i++) {
-                //L[i][j] = 0.0;
 				a[i * n + j] = 0;
-			}
+            }
 		}
 
-		/*
-		 * Step 1:
-		 * Update the diagonal element
-		 */
-
-		if (j % nProcesses == rank) {
-
-			for (k = 0; k < j; k++) {
-				//L[j][j] = L[j][j] - L[j][k] * L[j][k];
+        /* Update the diagonal element */
+        if (j % nProcesses == rank) {
+            for (k = 0; k < j; k++) {
                 a[j * n + j] = a[j * n + j] - a[j * n + k] * a[j * n + k];
-			}
+            }
 
-			//L[j][j] = sqrt(L[j][j]);
             a[j * n + j] = sqrt(a[j * n + j]);
-		}
+        }
 
-		// Broadcast row with new values to other processes
-		//MPI_Bcast(L[j], n, MPI_DOUBLE, j % nProcesses, MPI_COMM_WORLD);
-
-		for(i=0;i<n;i++) {
-			copy[i] = a[j * n + i];
+        /* Broadcast row with new values to other processes */
+		for(i = 0; i < n; i++) {
+            copy[i] = a[j * n + i];
 		}
 
 		MPI_Bcast(copy, n, MPI_DOUBLE, j % nProcesses, MPI_COMM_WORLD);
 
-        for(i=0;i<n;i++) {
+        for(i = 0; i < n; i++) {
 			a[j * n + i] = copy[i];
 		}
 
-		/*
-		 * Step 2:
-		 * Update the elements below the diagonal element
-		 */
-
-		// Divide the rest of the work
-		for (i = j + 1; i < n; i++) {
+        /* Divide the rest of the work and update the elements below the diagonal */
+        for (i = j + 1; i < n; i++) {
 			if (i % nProcesses == rank) {
 				for (k = 0; k < j; k++) {
-					//L[i][j] = L[i][j] - L[i][k] * L[j][k];
                     a[i * n + j] = a[i * n + j] - a[i * n + k] * a[j * n + k];
 				}
 
-				//L[i][j] = L[i][j] / L[j][j];
                 a[i * n + k] = a[i * n + k] / a[j * n + j];
 			}
 		}
 	}
-
-    /*
-	if (rank == 0){
-		end = MPI_Wtime();
-		printf("Testing OpenMpi implementation Output: \n");
-		printf("Runtime = %lf\n", end-start);
-		printf("Testing MPI implementation Output: ");
-		testBasicOutput(A,L,n);
-        // Test
-        /*double ** LLT = matrixMultiply(L, transpose(L, n), n);
-        printf("L*L^T = \n");
-        print(LLT, n);
-
-	}
-    */
-    //MPI_Barrier(MPI_COMM_WORLD);
-
-
 }
 
-void verifyCholesky(double *mat, double *a, int n) {
-    printf("am intrat\n");
+void show_matrix(double *mat, int n) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++)
+            printf("%2.5f ", mat[i * n + j]);
+        printf("\n");
+    }
+}
+
+void verifyCholesky(double *mat, double *L, int n) {
     int i, j, k;
     double rez[n * n], sum;
 
@@ -98,7 +65,7 @@ void verifyCholesky(double *mat, double *a, int n) {
         for (j = 0; j < n; j++) {
             sum = 0;
             for(k = 0; k < n; k++) {
-                sum += a[i * n + k] * a[j * n + k];
+                sum += L[i * n + k] * L[j * n + k];
             }
             rez[i*n+j] = sum;
         }
@@ -107,30 +74,24 @@ void verifyCholesky(double *mat, double *a, int n) {
     for(i = 0; i < n; i++) {
         for(j = 0; j < n; j++) {
             if(round(mat[i*n+j]) != round(rez[i*n+j])) {
-                printf("%d %d\n", i, j);
-                printf("%lf -- %lf\n", mat[i*n+j], rez[i*n+j]);
-                printf("sugi o ceapa\n");
+                printf("Wrong matrix!\n");
+                printf("Position: (%d, %d)\n", i, j);
                 return;
             }
         }
     }
-
-    printf("sugi un cartof\n");
-}
-
-void show_matrix(double *A, int n) {
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++)
-            printf("%2.5f ", A[i * n + j]);
-        printf("\n");
-    }
+    printf("Correct matrix!\n");
 }
 
 int main(int argc, char *argv[]) {
-    int n, rank, nProcesses;
-    int i, j, tid;
-    FILE *f = NULL;
+    int n, i, j, rank, nProcesses;
     double *mat, *matOriginal;
+	FILE * f = NULL;
+
+	if (argc < 2) {
+        fprintf(stderr, "Usage: mpirun --oversubscribe -np <num_procs> %s <in_file>\n", argv[0]);
+        exit(1);
+    }
 
     MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -138,17 +99,16 @@ int main(int argc, char *argv[]) {
 	printf("Hello from %i/%i\n", rank, nProcesses);
 
     if(rank == 0) {
-        f = fopen("testFile7.txt", "r");
+		f = fopen(argv[1], "r");
 
-        fscanf(f, "%d", &n);
-        printf("%d\n", n);
+	    fscanf(f, "%d", &n);
+	    printf("Size: %dx%d\n", n, n);
     }
-
 
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    mat = calloc(n*n, sizeof(double));
-    matOriginal = calloc(n*n, sizeof(double));
+    mat = (double*) malloc(n * n * sizeof(double));
+    matOriginal = (double*) malloc(n * n * sizeof(double));
 
 
     if (rank == 0) {
@@ -157,7 +117,6 @@ int main(int argc, char *argv[]) {
                 fscanf(f, "%lf", &mat[i * n + j]);
             }
         }
-        printf("barabula\n");
         fclose(f);
 
         for(i = 0; i < n; i++) {
@@ -168,26 +127,9 @@ int main(int argc, char *argv[]) {
 
     }
 
-
-    MPI_Bcast(mat, n*n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-	// for(i = 0; i < n; i++) {
-	// 	for(j = 0; j < n; j++) {
-	// 		printf("%lf ", mat[i * n + j]);
-	// 	}
-	// 	printf("\n");
-	// }
+    MPI_Bcast(mat, n * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     cholesky(mat, n, rank, nProcesses);
-
-    // for(i = 0; i < n; i++) {
-	// 	for(j = 0; j < n; j++) {
-	// 		printf("%lf ", mat[i * n + j]);
-	// 	}
-	// 	printf("\n");
-	// }
-
-	printf("dupa cholesky\n");
 
     if (rank == 0) {
         verifyCholesky(matOriginal, mat, n);
@@ -196,9 +138,6 @@ int main(int argc, char *argv[]) {
     free(mat);
     free(matOriginal);
 
-
-
     MPI_Finalize();
-
     return 0;
 }
