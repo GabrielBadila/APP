@@ -1,13 +1,14 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <pthread.h>
+#include "Utils/barrier.h"
 
-#define NUMTHREADS 4
+#define NUMTHREADS 2
 
 int n;
 double *mat, *matOriginal;
+pthread_barrier_t mybarrier;
 
 struct arg_struct {
     int rank;
@@ -60,6 +61,7 @@ void cholesky(int rank) {
             mat[j * n + j] = sqrt(mat[j * n + j]);
 		}
 
+        pthread_barrier_wait(&mybarrier);
 
 		/*
 		 * Step 2:
@@ -143,7 +145,7 @@ int main(int argc, char *argv[]) {
     pthread_t thread[NUMTHREADS];
     struct arg_struct args_s[NUMTHREADS];
 
-    f = fopen("testFile1.txt", "r");
+    f = fopen("testFile4.txt", "r");
     fscanf(f, "%d", &n);
     printf("%d\n", n);
 
@@ -181,6 +183,8 @@ int main(int argc, char *argv[]) {
         args_s[i].rank = i;
     }
 
+    pthread_barrier_init(&mybarrier, NULL, NUMTHREADS);
+
     // create threads
     for (i = 0; i < NUMTHREADS; ++i) {
         iret = pthread_create(&thread[i], NULL, choleskyThread, (void *)&args_s[i]);
@@ -195,6 +199,7 @@ int main(int argc, char *argv[]) {
         pthread_join( thread[i], NULL);
     }
 
+    pthread_barrier_destroy(&mybarrier);
 
     //show_matrix(mat, n);
     //show_matrix(matOriginal, n);
