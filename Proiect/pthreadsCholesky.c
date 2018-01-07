@@ -15,9 +15,7 @@ struct arg_struct {
 };
 
 void cholesky(int rank) {
-	double start, end;
 	int i, j, k;
-	double *copy = (double*) malloc(n * sizeof(double));
 
 	for(j = 0; j < n; j++) {
         /* Replace the entries above the diagonal with zeroes */
@@ -67,7 +65,8 @@ void show_matrix(double *mat, int n) {
 
 void verifyCholesky(double *mat, double *L, int n) {
     int i, j, k;
-    double rez[n * n], sum;
+    double sum;
+    double *rez = (double*) malloc(n * n * sizeof(double));
 
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {

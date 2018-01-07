@@ -4,7 +4,6 @@
 #include <mpi.h>
 
 void cholesky(double *a, int n, int rank, int nProcesses) {
-	double start, end;
 	int i, j, k;
 	double *copy = (double*) malloc(n * sizeof(double));
 
@@ -59,7 +58,8 @@ void show_matrix(double *mat, int n) {
 
 void verifyCholesky(double *mat, double *L, int n) {
     int i, j, k;
-    double rez[n * n], sum;
+	double sum;
+    double *rez = (double*) malloc(n * n * sizeof(double));
 
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
